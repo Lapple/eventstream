@@ -3,9 +3,16 @@
   "version": "0.0.0",
   "description": "First-class event stream",
   "main": "eventstream.js",
+  "scripts": {
+    "test": "mocha test.js"
+  },
   "keywords": [
     "eventstream"
   ],
   "author": "Aziz Yuldoshev",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "mocha": "2.4.5",
+    "sinon": "1.17.3"
+  }
 }
