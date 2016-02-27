@@ -1,7 +1,7 @@
 var EXHAUST_SIGNAL = {};
 
 function eventstream(subscriptor, scheduler) {
-    if (typeof scheduler !== 'function') {
+    if (!isFunction(scheduler)) {
         scheduler = identity;
     }
 
@@ -88,11 +88,14 @@ function eventstream(subscriptor, scheduler) {
         });
     }
 
-    function subscribe(onNext) {
+    function subscribe(onNext, onEnd) {
         var unsubscribeOnce = once(
             subscriptor(
                 scheduler(function(value) {
                     if (value === EXHAUST_SIGNAL) {
+                        if (isFunction(onEnd)) {
+                            onEnd();
+                        }
                         unsubscribeOnce();
                     } else {
                         onNext(value);
@@ -192,6 +195,10 @@ function invokeEach(array) {
 
 function identity(x) {
     return x;
+}
+
+function isFunction(fn) {
+    return typeof fn === 'function';
 }
 
 module.exports = eventstream;
