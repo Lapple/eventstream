@@ -156,7 +156,7 @@ describe('eventstream', () => {
                 this.streamA
                     .scan('', letter => `${letter}A`)
                     .combineLatest(
-                        this.streamB.scan('', letter =>`${letter}B`),
+                        this.streamB.scan('', letter => `${letter}B`),
                         (a, b) => `${a}-${b}`
                     )
                     .take(4)
@@ -183,7 +183,7 @@ describe('eventstream', () => {
                 this.streamA
                     .scan('', letter => `${letter}A`)
                     .combineLatest(
-                        this.streamB.scan('', letter =>`${letter}B`),
+                        this.streamB.scan('', letter => `${letter}B`),
                         (a, b) => `${a}-${b}`
                     )
                     .sampledBy(this.streamB)
@@ -201,6 +201,47 @@ describe('eventstream', () => {
                     );
 
                 this.clock.tick(100);
+            });
+        });
+
+        describe('.flatMap', () => {
+            it('should project spawned event streams onto a single event stream', function(done) {
+                const spy = sinon.spy();
+
+                this.streamA
+                    .scan(0, k => k + 1)
+                    .flatMap(k => {
+                        const e = eventstream(handler => {
+                            const timer = setInterval(handler, 5);
+                            return () => clearInterval(timer);
+                        });
+
+                        return e
+                            .scan(0, j => j + 1)
+                            .map(j => `${k}-${j}`);
+                    })
+                    .take(12)
+                    .subscribe(
+                        spy,
+                        () => {
+                            assert(spy.callCount === 12);
+                            assert(spy.getCall(0).calledWith('1-1'));
+                            assert(spy.getCall(1).calledWith('1-2'));
+                            assert(spy.getCall(2).calledWith('1-3'));
+                            assert(spy.getCall(3).calledWith('2-1'));
+                            assert(spy.getCall(4).calledWith('1-4'));
+                            assert(spy.getCall(5).calledWith('2-2'));
+                            assert(spy.getCall(6).calledWith('1-5'));
+                            assert(spy.getCall(7).calledWith('2-3'));
+                            assert(spy.getCall(8).calledWith('3-1'));
+                            assert(spy.getCall(9).calledWith('1-6'));
+                            assert(spy.getCall(10).calledWith('2-4'));
+                            assert(spy.getCall(11).calledWith('3-2'));
+                            done();
+                        }
+                    );
+
+                this.clock.tick(200);
             });
         });
     });
