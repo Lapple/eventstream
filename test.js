@@ -154,9 +154,9 @@ describe('eventstream', () => {
                 const spy = sinon.spy();
 
                 this.streamA
-                    .scan('A', letter => `${letter}A`)
+                    .scan('', letter => `${letter}A`)
                     .combineLatest(
-                        this.streamB.scan('B', letter =>`${letter}B`),
+                        this.streamB.scan('', letter =>`${letter}B`),
                         (a, b) => `${a}-${b}`
                     )
                     .take(4)
@@ -164,10 +164,38 @@ describe('eventstream', () => {
                         spy,
                         () => {
                             assert(spy.callCount === 4);
-                            assert(spy.getCall(0).calledWith('AA-BB'));
+                            assert(spy.getCall(0).calledWith('A-B'));
+                            assert(spy.getCall(1).calledWith('AA-B'));
+                            assert(spy.getCall(2).calledWith('AAA-B'));
+                            assert(spy.getCall(3).calledWith('AAA-BB'));
+                            done();
+                        }
+                    );
+
+                this.clock.tick(100);
+            });
+        });
+
+        describe('.sampledBy', () => {
+            it('should propagate target event stream ticks as sampled by passed stream', function(done) {
+                const spy = sinon.spy();
+
+                this.streamA
+                    .scan('', letter => `${letter}A`)
+                    .combineLatest(
+                        this.streamB.scan('', letter =>`${letter}B`),
+                        (a, b) => `${a}-${b}`
+                    )
+                    .sampledBy(this.streamB)
+                    .take(4)
+                    .subscribe(
+                        spy,
+                        () => {
+                            assert(spy.callCount === 4);
+                            assert(spy.getCall(0).calledWith('A-B'));
                             assert(spy.getCall(1).calledWith('AAA-BB'));
-                            assert(spy.getCall(2).calledWith('AAAA-BB'));
-                            assert(spy.getCall(3).calledWith('AAAA-BBB'));
+                            assert(spy.getCall(2).calledWith('AAAA-BBB'));
+                            assert(spy.getCall(3).calledWith('AAAAAA-BBBB'));
                             done();
                         }
                     );

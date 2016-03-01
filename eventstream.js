@@ -1,8 +1,13 @@
 var EXHAUST_SIGNAL = {};
 
+var TRUE = true;
+var FALSE = false;
+
 function eventstream(subscriptor, scheduler) {
     if (!isFunction(scheduler)) {
-        scheduler = identity;
+        scheduler = function(next) {
+            return next;
+        };
     }
 
     function map(fn) {
@@ -55,8 +60,24 @@ function eventstream(subscriptor, scheduler) {
 
         return combineWithEventStream(
             another,
-            partial(transform, true),
-            partial(transform, false)
+            partial(transform, TRUE),
+            partial(transform, FALSE)
+        );
+    }
+
+    function sampledBy(another) {
+        var container = {};
+
+        return combineWithEventStream(
+            another,
+            function(next, value) {
+                container.v = value;
+            },
+            function(next) {
+                if ('v' in container) {
+                    next(container.v);
+                }
+            }
         );
     }
 
@@ -110,15 +131,16 @@ function eventstream(subscriptor, scheduler) {
     return {
         map: map,
         filter: filter,
-        takeUntil: takeUntil,
         scan: scan,
+
+        takeUntil: takeUntil,
+        take: take,
 
         merge: merge,
         combineLatest: combineLatest,
+        sampledBy: sampledBy,
 
         flatMap: flatMap,
-
-        take: take,
 
         subscribe: subscribe,
 
@@ -145,8 +167,8 @@ function eventstream(subscriptor, scheduler) {
                 another.subscriptor
             ),
             function(next) {
-                return function(index, value) {
-                    if (index === 0) {
+                return function(self, value) {
+                    if (self) {
                         scheduler(partial(transformA, next))(value);
                     } else {
                         another.scheduler(partial(transformB, next))(value);
@@ -159,8 +181,8 @@ function eventstream(subscriptor, scheduler) {
 
 function joinSubscriptors(a, b) {
     return function(handler) {
-        var unsubscribeFromA = a(partial(handler, 0));
-        var unsubscribeFromB = b(partial(handler, 1));
+        var unsubscribeFromA = a(partial(handler, TRUE));
+        var unsubscribeFromB = b(partial(handler, FALSE));
 
         return function() {
             unsubscribeFromA();
@@ -191,10 +213,6 @@ function invokeEach(array) {
     for (var i = 0, len = array.length; i < len; i += 1) {
         array[i]();
     }
-}
-
-function identity(x) {
-    return x;
 }
 
 function isFunction(fn) {
