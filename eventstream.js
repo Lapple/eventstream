@@ -27,15 +27,15 @@ function eventstream(subscriptor, scheduler) {
     function scan(seed, fn) {
         var s = seed;
 
-        return transformScheduler(function(next, value) {
+        return map(function(value) {
             s = fn(s, value);
-            next(s);
+            return s;
         });
     }
 
     function takeUntil(predicate) {
-        return transformScheduler(function(next, value) {
-            next(predicate(value) ? EXHAUST_SIGNAL : value);
+        return map(function(value) {
+            return predicate(value) ? EXHAUST_SIGNAL : value;
         });
     }
 
