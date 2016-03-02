@@ -22,6 +22,43 @@ describe('eventstream', () => {
         this.clock.restore();
     });
 
+    describe('behaviour', () => {
+        describe('subscriptor', () => {
+            it('should never be called unless there are subscriptions', function() {
+                const spy = sinon.spy();
+                const stream = eventstream(spy)
+                    .scan(0, count => count + 1)
+                    .map(Date.now);
+
+                this.clock.tick(100);
+
+                assert(spy.callCount === 0);
+            });
+
+            it('should have its unsubscribe callback called on stream exhaust', function() {
+                const spy = sinon.spy();
+
+                const stream = eventstream(handler => {
+                    const timer = setInterval(handler, 10);
+
+                    return () => {
+                        clearInterval(timer);
+                        spy();
+                    }
+                });
+
+                stream
+                    .map(Date.now)
+                    .take(10)
+                    .subscribe(() => {});
+
+                this.clock.tick(200);
+
+                assert(spy.callCount === 1);
+            });
+        });
+    });
+
     describe('methods', () => {
         describe('.map', () => {
             it('should synchronously transform incoming value into another', function(done) {
@@ -237,6 +274,36 @@ describe('eventstream', () => {
                             assert(spy.getCall(9).calledWith('1-6'));
                             assert(spy.getCall(10).calledWith('2-4'));
                             assert(spy.getCall(11).calledWith('3-2'));
+                            done();
+                        }
+                    );
+
+                this.clock.tick(200);
+            });
+
+            it('should have child streams\' unsubscribe callback called on main stream exhaust', function(done) {
+                const spySubscribe = sinon.spy();
+                const spyUnsubscribe = sinon.spy();
+
+                this.streamA
+                    .flatMap(() => {
+                        return eventstream(handler => {
+                            const timer = setInterval(handler, 5);
+
+                            spySubscribe();
+
+                            return () => {
+                                clearInterval(timer);
+                                spyUnsubscribe();
+                            }
+                        });
+                    })
+                    .take(12)
+                    .subscribe(
+                        () => {},
+                        () => {
+                            assert(spySubscribe.callCount === 4);
+                            assert(spyUnsubscribe.callCount === 4);
                             done();
                         }
                     );

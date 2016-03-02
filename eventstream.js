@@ -39,6 +39,18 @@ function eventstream(subscriptor, scheduler) {
         });
     }
 
+    function take(count) {
+        return transformScheduler(function(next, value) {
+            if (--count >= 0) {
+                next(value);
+
+                if (count === 0) {
+                    next(EXHAUST_SIGNAL);
+                }
+            }
+        });
+    }
+
     function merge(another) {
         function transform(next, value) {
             next(value);
@@ -103,21 +115,15 @@ function eventstream(subscriptor, scheduler) {
         );
     }
 
-    function take(count) {
-        return takeUntil(function() {
-            return count-- === 0;
-        });
-    }
-
     function subscribe(onNext, onEnd) {
         var unsubscribeOnce = once(
             subscriptor(
                 scheduler(function(value) {
                     if (value === EXHAUST_SIGNAL) {
+                        unsubscribeOnce();
                         if (isFunction(onEnd)) {
                             onEnd();
                         }
-                        unsubscribeOnce();
                     } else {
                         onNext(value);
                     }
