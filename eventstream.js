@@ -134,6 +134,10 @@ function eventstream(subscriptor, scheduler) {
         return unsubscribeOnce;
     }
 
+    function decompose(getter) {
+        return getter(subscriptor, scheduler);
+    }
+
     return {
         map: map,
         filter: filter,
@@ -149,10 +153,7 @@ function eventstream(subscriptor, scheduler) {
         flatMap: flatMap,
 
         subscribe: subscribe,
-
-        // FIXME: Make these read-only.
-        subscriptor: subscriptor,
-        scheduler: scheduler
+        decompose: decompose
     };
 
     function transformScheduler(transform) {
@@ -167,21 +168,23 @@ function eventstream(subscriptor, scheduler) {
     }
 
     function combineWithEventStream(another, transformA, transformB) {
-        return eventstream(
-            joinSubscriptors(
-                subscriptor,
-                another.subscriptor
-            ),
-            function(next) {
-                return function(self, value) {
-                    if (self) {
-                        scheduler(partial(transformA, next))(value);
-                    } else {
-                        another.scheduler(partial(transformB, next))(value);
-                    }
-                };
-            }
-        );
+        return another.decompose(function(anotherSubscriptor, anotherScheduler) {
+            return eventstream(
+                joinSubscriptors(
+                    subscriptor,
+                    anotherSubscriptor
+                ),
+                function(next) {
+                    return function(self, value) {
+                        if (self) {
+                            scheduler(partial(transformA, next))(value);
+                        } else {
+                            anotherScheduler(partial(transformB, next))(value);
+                        }
+                    };
+                }
+            );
+        });
     }
 }
 
