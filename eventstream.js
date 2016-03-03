@@ -1,13 +1,10 @@
 var EXHAUST_SIGNAL = {};
 
-var TRUE = true;
-var FALSE = false;
+var constant = partial(partial, identity);
 
 function eventstream(subscriptor, scheduler) {
-    if (!isFunction(scheduler)) {
-        scheduler = function(next) {
-            return next;
-        };
+    if (!scheduler) {
+        scheduler = identity;
     }
 
     function map(fn) {
@@ -33,10 +30,20 @@ function eventstream(subscriptor, scheduler) {
         });
     }
 
-    function takeUntil(predicate) {
-        return map(function(value) {
-            return predicate(value) ? EXHAUST_SIGNAL : value;
-        });
+    function delay(timeout) {
+        var timer;
+
+        return eventstream(
+            joinSubscriptors(
+                constant(function() {
+                    clearTimeout(timer);
+                }),
+                subscriptor
+            ),
+            composeScheduler(function(next, value) {
+                timer = setTimeout(partial(next, value), timeout);
+            })
+        );
     }
 
     function take(count) {
@@ -51,15 +58,15 @@ function eventstream(subscriptor, scheduler) {
         });
     }
 
-    function merge(another) {
+    function merge(other) {
         function transform(next, value) {
             next(value);
         }
 
-        return combineWithEventStream(another, transform, transform);
+        return combineWithEventStream(other, transform, transform);
     }
 
-    function combineLatest(another, combinator) {
+    function combineLatest(other, combinator) {
         var values = {};
 
         function transform(self, next, value) {
@@ -71,17 +78,17 @@ function eventstream(subscriptor, scheduler) {
         }
 
         return combineWithEventStream(
-            another,
-            partial(transform, TRUE),
-            partial(transform, FALSE)
+            other,
+            partial(transform, true),
+            partial(transform, false)
         );
     }
 
-    function sampledBy(another) {
+    function sampledBy(other) {
         var container = {};
 
         return combineWithEventStream(
-            another,
+            other,
             function(next, value) {
                 container.v = value;
             },
@@ -90,6 +97,14 @@ function eventstream(subscriptor, scheduler) {
                     next(container.v);
                 }
             }
+        );
+    }
+
+    function takeUntil(other) {
+        return merge(
+            other.map(
+                constant(EXHAUST_SIGNAL)
+            )
         );
     }
 
@@ -105,13 +120,11 @@ function eventstream(subscriptor, scheduler) {
                     unsubscribe();
                 };
             },
-            function(next) {
-                return scheduler(function(value) {
-                    substreams.push(
-                        fn(value).subscribe(next)
-                    );
-                });
-            }
+            composeScheduler(function(next, value) {
+                substreams.push(
+                    fn(value).subscribe(next)
+                );
+            })
         );
     }
 
@@ -121,7 +134,7 @@ function eventstream(subscriptor, scheduler) {
                 scheduler(function(value) {
                     if (value === EXHAUST_SIGNAL) {
                         unsubscribeOnce();
-                        if (isFunction(onEnd)) {
+                        if (onEnd) {
                             onEnd();
                         }
                     } else {
@@ -142,6 +155,7 @@ function eventstream(subscriptor, scheduler) {
         map: map,
         filter: filter,
         scan: scan,
+        delay: delay,
 
         takeUntil: takeUntil,
         take: take,
@@ -159,27 +173,29 @@ function eventstream(subscriptor, scheduler) {
     function transformScheduler(transform) {
         return eventstream(
             subscriptor,
-            function(next) {
-                return scheduler(function(value) {
-                    transform(next, value);
-                });
-            }
+            composeScheduler(transform)
         );
     }
 
-    function combineWithEventStream(another, transformA, transformB) {
-        return another.decompose(function(anotherSubscriptor, anotherScheduler) {
+    function composeScheduler(fn) {
+        return function(next) {
+            return scheduler(partial(fn, next));
+        }
+    }
+
+    function combineWithEventStream(other, transformA, transformB) {
+        return other.decompose(function(otherSubscriptor, otherScheduler) {
             return eventstream(
                 joinSubscriptors(
                     subscriptor,
-                    anotherSubscriptor
+                    otherSubscriptor
                 ),
                 function(next) {
                     return function(self, value) {
                         if (self) {
                             scheduler(partial(transformA, next))(value);
                         } else {
-                            anotherScheduler(partial(transformB, next))(value);
+                            otherScheduler(partial(transformB, next))(value);
                         }
                     };
                 }
@@ -190,8 +206,8 @@ function eventstream(subscriptor, scheduler) {
 
 function joinSubscriptors(a, b) {
     return function(handler) {
-        var unsubscribeFromA = a(partial(handler, TRUE));
-        var unsubscribeFromB = b(partial(handler, FALSE));
+        var unsubscribeFromA = a(partial(handler, true));
+        var unsubscribeFromB = b(partial(handler, false));
 
         return function() {
             unsubscribeFromA();
@@ -203,7 +219,7 @@ function joinSubscriptors(a, b) {
 function partial(fn, argument) {
     // FIXME: Pass all arguments.
     return function(a, b) {
-        fn(argument, a, b);
+        return fn(argument, a, b);
     };
 }
 
@@ -224,8 +240,8 @@ function invokeEach(array) {
     }
 }
 
-function isFunction(fn) {
-    return typeof fn === 'function';
+function identity(x) {
+    return x;
 }
 
 module.exports = eventstream;

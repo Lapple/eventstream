@@ -119,18 +119,19 @@ describe('eventstream', () => {
         });
 
         describe('.takeUntil', () => {
-            it('should accept event propagation until first truthy predicate result', function(done) {
+            it('should accept event propagation until the passed eventstream ticks', function(done) {
                 const spy = sinon.spy();
 
                 this.streamA
                     .scan(0, counter => counter + 1)
-                    .takeUntil(counter => counter > 2)
+                    .takeUntil(
+                        this.streamB.delay(20)
+                    )
                     .subscribe(
                         spy,
                         () => {
-                            assert(spy.callCount === 2);
+                            assert(spy.callCount === 3);
                             assert(spy.getCall(0).calledWith(1));
-                            assert(spy.getCall(1).calledWith(2));
                             done();
                         }
                     );
