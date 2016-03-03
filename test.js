@@ -162,6 +162,34 @@ describe('eventstream', () => {
             });
         });
 
+        describe('.delay', () => {
+            it('should delay event propagation by a certain timeout', function(done) {
+                const spy = sinon.spy();
+
+                this.streamA
+                    .delay(20)
+                    .take(5)
+                    .subscribe(spy, done);
+
+                this.clock.tick(1);
+                assert(spy.callCount === 0);
+
+                this.clock.tick(20);
+                assert(spy.callCount === 0);
+
+                this.clock.tick(10);
+                assert(spy.callCount === 1);
+
+                this.clock.tick(10);
+                assert(spy.callCount === 2);
+
+                this.clock.tick(20);
+                assert(spy.callCount === 4);
+
+                this.clock.tick(50);
+            });
+        });
+
         describe('.merge', () => {
             it('should merge signals from two streams into one', function(done) {
                 const spy = sinon.spy();
