@@ -112,14 +112,12 @@ function eventstream(subscriptor, scheduler) {
         var substreams = [];
 
         return eventstream(
-            function(handler) {
-                var unsubscribe = subscriptor(handler);
-
-                return function() {
-                    invokeEach(substreams);
-                    unsubscribe();
-                };
-            },
+            joinSubscriptors(
+                subscriptor,
+                constant(
+                    partial(invokeEach, substreams)
+                )
+            ),
             composeScheduler(function(next, value) {
                 substreams.push(
                     fn(value).subscribe(next)
