@@ -278,7 +278,78 @@ describe('eventstream', () => {
                     .scan(0, k => k + 1)
                     .flatMap(k => {
                         const e = eventstream(handler => {
-                            const timer = setInterval(handler, 5);
+                            const timer = setInterval(handler, 3);
+                            return () => clearInterval(timer);
+                        });
+
+                        return e
+                            .scan(0, j => j + 1)
+                            .map(j => `${k}-${j}`);
+                    })
+                    .take(12)
+                    .subscribe(
+                        spy,
+                        () => {
+                            assert(spy.callCount === 12);
+                            assert(spy.getCall(0).calledWith('1-1'));
+                            assert(spy.getCall(1).calledWith('1-2'));
+                            assert(spy.getCall(2).calledWith('1-3'));
+                            assert(spy.getCall(3).calledWith('1-4'));
+                            assert(spy.getCall(4).calledWith('2-1'));
+                            assert(spy.getCall(5).calledWith('1-5'));
+                            assert(spy.getCall(6).calledWith('2-2'));
+                            assert(spy.getCall(7).calledWith('1-6'));
+                            assert(spy.getCall(8).calledWith('2-3'));
+                            assert(spy.getCall(9).calledWith('1-7'));
+                            assert(spy.getCall(10).calledWith('2-4'));
+                            assert(spy.getCall(11).calledWith('3-1'));
+                            done();
+                        }
+                    );
+
+                this.clock.tick(200);
+            });
+
+            it('should have child streams\' unsubscribe callback called on main stream exhaust', function(done) {
+                const spySubscribe = sinon.spy();
+                const spyUnsubscribe = sinon.spy();
+
+                this.streamA
+                    .flatMap(() => {
+                        return eventstream(handler => {
+                            const timer = setInterval(handler, 3);
+
+                            spySubscribe();
+
+                            return () => {
+                                clearInterval(timer);
+                                spyUnsubscribe();
+                            }
+                        });
+                    })
+                    .take(12)
+                    .subscribe(
+                        () => {},
+                        () => {
+                            assert(spySubscribe.callCount === 3);
+                            assert(spyUnsubscribe.callCount === 3);
+                            done();
+                        }
+                    );
+
+                this.clock.tick(200);
+            });
+        });
+
+        describe('.flatMapLatest', () => {
+            it('should project latest spawned event stream onto a single event stream', function(done) {
+                const spy = sinon.spy();
+
+                this.streamA
+                    .scan(0, k => k + 1)
+                    .flatMapLatest(k => {
+                        const e = eventstream(handler => {
+                            const timer = setInterval(handler, 3);
                             return () => clearInterval(timer);
                         });
 
@@ -295,14 +366,14 @@ describe('eventstream', () => {
                             assert(spy.getCall(1).calledWith('1-2'));
                             assert(spy.getCall(2).calledWith('1-3'));
                             assert(spy.getCall(3).calledWith('2-1'));
-                            assert(spy.getCall(4).calledWith('1-4'));
-                            assert(spy.getCall(5).calledWith('2-2'));
-                            assert(spy.getCall(6).calledWith('1-5'));
-                            assert(spy.getCall(7).calledWith('2-3'));
-                            assert(spy.getCall(8).calledWith('3-1'));
-                            assert(spy.getCall(9).calledWith('1-6'));
-                            assert(spy.getCall(10).calledWith('2-4'));
-                            assert(spy.getCall(11).calledWith('3-2'));
+                            assert(spy.getCall(4).calledWith('2-2'));
+                            assert(spy.getCall(5).calledWith('2-3'));
+                            assert(spy.getCall(6).calledWith('3-1'));
+                            assert(spy.getCall(7).calledWith('3-2'));
+                            assert(spy.getCall(8).calledWith('3-3'));
+                            assert(spy.getCall(9).calledWith('4-1'));
+                            assert(spy.getCall(10).calledWith('4-2'));
+                            assert(spy.getCall(11).calledWith('4-3'));
                             done();
                         }
                     );
@@ -315,9 +386,9 @@ describe('eventstream', () => {
                 const spyUnsubscribe = sinon.spy();
 
                 this.streamA
-                    .flatMap(() => {
+                    .flatMapLatest(() => {
                         return eventstream(handler => {
-                            const timer = setInterval(handler, 5);
+                            const timer = setInterval(handler, 3);
 
                             spySubscribe();
 

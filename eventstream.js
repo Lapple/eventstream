@@ -113,15 +113,36 @@ function eventstream(subscriptor, scheduler) {
 
         return eventstream(
             joinSubscriptors(
-                subscriptor,
                 constant(
                     partial(invokeEach, substreams)
-                )
+                ),
+                subscriptor
             ),
             composeScheduler(function(next, value) {
                 substreams.push(
                     fn(value).subscribe(next)
                 );
+            })
+        );
+    }
+
+    function flatMapLatest(fn) {
+        var substream;
+
+        function unsubscribeSubstream() {
+            if (substream) {
+                substream();
+            }
+        }
+
+        return eventstream(
+            joinSubscriptors(
+                constant(unsubscribeSubstream),
+                subscriptor
+            ),
+            composeScheduler(function(next, value) {
+                unsubscribeSubstream();
+                substream = fn(value).subscribe(next);
             })
         );
     }
@@ -163,6 +184,7 @@ function eventstream(subscriptor, scheduler) {
         sampledBy: sampledBy,
 
         flatMap: flatMap,
+        flatMapLatest: flatMapLatest,
 
         subscribe: subscribe,
         decompose: decompose
