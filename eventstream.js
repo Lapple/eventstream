@@ -30,6 +30,15 @@ function eventstream(subscriptor, scheduler) {
         });
     }
 
+    function diff(start, fn) {
+        var s = start;
+
+        return transformScheduler(function(next, value) {
+            next(fn(s, value));
+            s = value;
+        });
+    }
+
     function delay(timeout) {
         var timer;
 
@@ -175,6 +184,7 @@ function eventstream(subscriptor, scheduler) {
         filter: filter,
         scan: scan,
         delay: delay,
+        diff: diff,
 
         takeUntil: takeUntil,
         take: take,

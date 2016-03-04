@@ -96,6 +96,29 @@ describe('eventstream', () => {
             });
         });
 
+        describe('.diff', () => {
+            it('should continuously emit the result of difference function applied to two consecutive ticks', function(done) {
+                const spy = sinon.spy();
+
+                this.streamA
+                    .scan(0, counter => counter + 2)
+                    .diff(0, (a, b) => Math.abs(a - b))
+                    .take(3)
+                    .subscribe(
+                        spy,
+                        () => {
+                            assert(spy.callCount === 3);
+                            assert(spy.getCall(0).calledWith(2));
+                            assert(spy.getCall(1).calledWith(2));
+                            assert(spy.getCall(2).calledWith(2));
+                            done();
+                        }
+                    );
+
+                this.clock.tick(100);
+            });
+        });
+
         describe('.filter', () => {
             it('should accept or discard event propagation depending on predicate output', function(done) {
                 const spy = sinon.spy();
