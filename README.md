@@ -163,3 +163,69 @@ clicks
         console.log(isDescendant ? 'Clicking in' : 'Clicking out');
     });
 ```
+
+#### `.take(count)`
+
+Returns a new stream that will exhaust immediately after propagating `count`
+ticks:
+
+```js
+clicks
+    .take(1)
+    .subscribe(
+        function(e) {
+            console.log('Clicked once');
+        },
+        function() {
+            console.log('Done!');
+        }
+    );
+```
+
+### `.merge(other)`
+
+Returns a new stream that is going to project the ticks of both source stream
+and `other` stream onto a single timeline:
+
+```js
+var clickTargets = clicks.map(function(e) {
+    return e.target;
+});
+
+var plusClicks = clickTargets.filter(function(element) {
+    return element.matches('.js-plus');
+});
+
+var minusClicks = clickTargets.filter(function(element) {
+    return element.matches('.js-minus');
+});
+
+plusClicks
+    .map(function() { return 1; })
+    .merge(
+        minusClicks.map(function() { return -1; })
+    )
+    .scan(0, function(count, delta) {
+        return count + delta;
+    })
+    .subscribe(function(count) {
+        console.log('Current counter value', count);
+    });
+```
+
+### `.takeUntil(other)`
+
+Returns a new stream that is going to exhaust on the first tick, received from
+`other` stream:
+
+```js
+var closeClicks = clicks
+    .map(function(e) { return e.target; })
+    .filter(function(element) { return element.matches('.js-close-window') });
+
+counter
+    .takeUntil(closeClicks)
+    .subscribe(function(count) {
+        console.log('Count while window is open', count);
+    });
+```
