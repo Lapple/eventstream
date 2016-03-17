@@ -182,7 +182,7 @@ clicks
     );
 ```
 
-### `.merge(other)`
+#### `.merge(other)`
 
 Returns a new stream that is going to project the ticks of both source stream
 and `other` stream onto a single timeline:
@@ -213,7 +213,7 @@ plusClicks
     });
 ```
 
-### `.takeUntil(other)`
+#### `.takeUntil(other)`
 
 Returns a new stream that is going to exhaust on the first tick, received from
 `other` stream:
@@ -227,5 +227,52 @@ counter
     .takeUntil(closeClicks)
     .subscribe(function(count) {
         console.log('Count while window is open', count);
+    });
+```
+
+#### `.combineLatest(other, combinator)`
+
+Returns a new stream that will emit a value, returned by `combinator` function,
+on ticks from both source and `other` streams once both of them produce a value:
+
+```js
+var colorChanges = changeEvents.filter(function(e) {
+    return e.target.matches('.js-color');
+});
+
+var sizeChanges = changeEvents.filter(function(e) {
+    return e.target.matches('.js-size');
+});
+
+var getTargetValue = function(e) {
+    return e.target.value;
+};
+
+var colors = colorChanges.map(getTargetValue);
+var sizes = sizeChanges.map(getTargetValue);
+
+colors
+    .combineLatest(sizes, function(color, size) {
+        return { size: size, color: color };
+    })
+    .subscribe(function(options) {
+        console.log(
+            'Selected color is', options.color,
+            'selected size is', options.size
+        )
+    });
+```
+
+#### `.sampledBy(other)`
+
+Returns a new stream that is going to emit source stream values, as they were
+observed on `other` stream ticks:
+
+```js
+filterSettings
+    .sampledBy(formSubmissions)
+    .take(1)
+    .subscribe(function(settings) {
+        console.log('Submitted filter settings', settings);
     });
 ```
