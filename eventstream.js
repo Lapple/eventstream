@@ -117,7 +117,7 @@ function eventstream(subscriptor, scheduler) {
         );
     }
 
-    function flatMap(fn) {
+    function flatMapCapped(limit, fn) {
         var substreams = [];
 
         return eventstream(
@@ -128,30 +128,13 @@ function eventstream(subscriptor, scheduler) {
                 subscriptor
             ),
             composeScheduler(function(next, value) {
+                if (substreams.length >= limit) {
+                    substreams.shift()();
+                }
+
                 substreams.push(
                     fn(value).subscribe(next)
                 );
-            })
-        );
-    }
-
-    function flatMapLatest(fn) {
-        var substream;
-
-        function unsubscribeSubstream() {
-            if (substream) {
-                substream();
-            }
-        }
-
-        return eventstream(
-            joinSubscriptors(
-                constant(unsubscribeSubstream),
-                subscriptor
-            ),
-            composeScheduler(function(next, value) {
-                unsubscribeSubstream();
-                substream = fn(value).subscribe(next);
             })
         );
     }
@@ -193,8 +176,8 @@ function eventstream(subscriptor, scheduler) {
         combineLatest: combineLatest,
         sampledBy: sampledBy,
 
-        flatMap: flatMap,
-        flatMapLatest: flatMapLatest,
+        flatMap: partial(flatMapCapped, Infinity),
+        flatMapLatest: partial(flatMapCapped, 1),
 
         subscribe: subscribe,
         decompose: decompose
