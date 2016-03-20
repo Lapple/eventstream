@@ -24,9 +24,9 @@ function eventstream(subscriptor, scheduler) {
     function scan(seed, fn) {
         var s = seed;
 
-        return map(function(value) {
+        return transformScheduler(function(next, value) {
             s = fn(s, value);
-            return s;
+            next(s);
         });
     }
 
