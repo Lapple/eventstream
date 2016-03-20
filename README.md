@@ -276,3 +276,32 @@ filterSettings
         console.log('Submitted filter settings', settings);
     });
 ```
+
+#### `.flatMap(fn)`
+
+Returns a new stream that expects `fn` to produce a new event stream on each
+source stream tick and then merges all these newly-produced streams onto a
+single timeline:
+
+```js
+userConnections
+    .flatMap(function(user) {
+        return eventstream(function(handler) {
+            var onMessage = function(text) {
+                handler({
+                    user: user,
+                    text: text
+                });
+            };
+
+            user.addEventListener('message', onMessage);
+
+            return function() {
+                user.removeEventListener('message', onMessage);
+            };
+        });
+    })
+    .subscribe(function(message) {
+        console.log(message.user.name, ':', message.text);
+    });
+```
