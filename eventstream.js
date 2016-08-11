@@ -170,31 +170,34 @@ function eventstream(subscriptor, scheduler) {
     }
 
     function subscribe(onNext, onEnd, onError) {
-        var unsubscribeOnce = once(
-            subscriptor(
-                scheduler(
-                    function(value) {
-                        if (value === EXHAUST_SIGNAL) {
-                            unsubscribeOnce();
-                            if (onEnd) {
-                                onEnd();
-                            }
-                        } else {
-                            onNext(value);
+        var canUnsubscribe = true;
+
+        var unsubscribe = subscriptor(
+            scheduler(
+                function(value) {
+                    if (value === EXHAUST_SIGNAL) {
+                        if (canUnsubscribe) {
+                            canUnsubscribe = false;
+                            unsubscribe();
                         }
-                    },
-                    function(error) {
-                        if (onError) {
-                            onError(error);
-                        } else {
-                            throw error;
+                        if (onEnd) {
+                            onEnd();
                         }
+                    } else {
+                        onNext(value);
                     }
-                )
+                },
+                function(error) {
+                    if (onError) {
+                        onError(error);
+                    } else {
+                        throw error;
+                    }
+                }
             )
         );
 
-        return unsubscribeOnce;
+        return unsubscribe;
     }
 
     function decompose(getter) {
@@ -281,17 +284,6 @@ function partial(fn, argument) {
     return function(a, b, c) {
         return fn(argument, a, b, c);
     }
-}
-
-function once(fn) {
-    var called = false;
-
-    return function() {
-        if (!called) {
-            called = true;
-            fn();
-        }
-    };
 }
 
 function invokeEach(array) {
