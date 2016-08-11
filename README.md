@@ -66,7 +66,7 @@ corresponding subscription.
 
 ### Subscription
 
-#### `.subscribe(onNext, [onEnd])`
+#### `.subscribe(onNext, [onEnd], [onError])`
 
 Subscribes `onNext` function to the stream updates, returns unsubscribe
 function. `onNext` is going to be invoked on each stream tick with the tick's
@@ -77,6 +77,9 @@ clicks.subscribe(function(e) {
     console.log('Element clicked', e.target);
 });
 ```
+
+If optional `onError` callback is passed, any exception thrown during
+transformation function calls is caught and delivered to the callback.
 
 ### Transformation
 

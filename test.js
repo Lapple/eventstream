@@ -435,4 +435,67 @@ describe('eventstream', () => {
             });
         });
     });
+
+    // TODO: More tests in this section.
+    describe('error propagation', () => {
+        it('should collect errors thrown in onError handler', function(done) {
+            const spy = sinon.spy();
+
+            this.streamA
+                .scan(0, k => k + 1)
+                .map(k => {
+                    if (k % 2 === 0) {
+                        return k;
+                    } else {
+                        throw new Error();
+                    }
+                })
+                .take(2)
+                .subscribe(
+                    _ => _,
+                    () => {
+                        assert(spy.callCount === 2);
+                        assert(spy.getCall(0).args.length === 1);
+                        assert(spy.getCall(0).args[0] instanceof Error);
+                        assert(spy.getCall(1).args.length === 1);
+                        assert(spy.getCall(1).args[0] instanceof Error);
+                        done();
+                    },
+                    spy
+                );
+
+            this.clock.tick(100);
+        });
+
+        it('should not call value-processing callbacks', function(done) {
+            const spyBeforeError = sinon.spy();
+            const spyAfterError = sinon.spy();
+
+            this.streamA
+                .map(spyBeforeError)
+                .scan(0, k => k + 1)
+                .map(k => {
+                    if (k % 2 === 0) {
+                        return k;
+                    } else {
+                        return namespace.UNDEFINED_VARIABLE;
+                    }
+                })
+                .map(spyAfterError)
+                .take(2)
+                .subscribe(
+                    _ => _,
+                    () => {
+                        assert(spyBeforeError.callCount === 4);
+                        assert(spyAfterError.callCount === 2);
+                        assert(spyAfterError.getCall(0).calledWith(2));
+                        assert(spyAfterError.getCall(1).calledWith(4));
+                        done();
+                    },
+                    _ => _
+                );
+
+            this.clock.tick(100);
+        });
+    });
 });
