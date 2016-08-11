@@ -238,7 +238,7 @@ function eventstream(subscriptor, scheduler) {
                 partial(partial(fn, next), nextError),
                 nextError
             );
-        }
+        };
     }
 
     function combineWithEventStream(other, transformA, transformB) {
@@ -283,7 +283,7 @@ function joinSubscriptors(a, b) {
 function partial(fn, argument) {
     return function(a, b, c) {
         return fn(argument, a, b, c);
-    }
+    };
 }
 
 function invokeEach(array) {
