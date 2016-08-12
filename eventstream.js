@@ -1,4 +1,5 @@
 var EXHAUST_SIGNAL = {};
+var NO_VALUE = {};
 
 var constant = partial(partial, identity);
 
@@ -124,16 +125,16 @@ function eventstream(subscriptor, scheduler) {
     }
 
     function sampledBy(other) {
-        var container = {};
+        var v = NO_VALUE;
 
         return combineWithEventStream(
             other,
             function(next, nextError, value) {
-                container.v = value;
+                v = value;
             },
             function(next) {
-                if ('v' in container) {
-                    next(container.v);
+                if (v !== NO_VALUE) {
+                    next(v);
                 }
             }
         );
