@@ -497,5 +497,58 @@ describe('eventstream', () => {
 
             this.clock.tick(100);
         });
+
+        it('should catch exceptions produced by `flatMap`s child streams', function(done) {
+            const spyValues = sinon.spy();
+            const spyErrors = sinon.spy();
+
+            this.streamA
+                .scan(0, k => k + 1)
+                .flatMap(k => {
+                    const e = eventstream(handler => {
+                        const timer = setInterval(handler, 3);
+                        return () => clearInterval(timer);
+                    });
+
+                    return e
+                        .scan(0, j => j + 1)
+                        .map(j => {
+                            if (j % 2 === 0) {
+                                return namespace.UNDEFINED_VARIABLE;
+                            }
+
+                            return `${k}-${j}`;
+                        });
+                })
+                .take(7)
+                .subscribe(
+                    spyValues,
+                    () => {
+                        assert(spyValues.callCount === 7);
+                        assert(spyValues.getCall(0).calledWith('1-1'));
+                        assert(spyValues.getCall(1).calledWith('1-3'));
+                        assert(spyValues.getCall(2).calledWith('2-1'));
+                        assert(spyValues.getCall(3).calledWith('1-5'));
+                        assert(spyValues.getCall(4).calledWith('2-3'));
+                        assert(spyValues.getCall(5).calledWith('1-7'));
+                        assert(spyValues.getCall(6).calledWith('3-1'));
+                        assert(spyErrors.callCount === 5);
+                        assert(spyErrors.getCall(0).args.length === 1);
+                        assert(spyErrors.getCall(0).args[0] instanceof Error);
+                        assert(spyErrors.getCall(1).args.length === 1);
+                        assert(spyErrors.getCall(1).args[0] instanceof Error);
+                        assert(spyErrors.getCall(2).args.length === 1);
+                        assert(spyErrors.getCall(2).args[0] instanceof Error);
+                        assert(spyErrors.getCall(3).args.length === 1);
+                        assert(spyErrors.getCall(3).args[0] instanceof Error);
+                        assert(spyErrors.getCall(4).args.length === 1);
+                        assert(spyErrors.getCall(4).args[0] instanceof Error);
+                        done();
+                    },
+                    spyErrors
+                );
+
+            this.clock.tick(200);
+        });
     });
 });
