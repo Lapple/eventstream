@@ -72,6 +72,24 @@ describe('eventstream', () => {
 
                 this.clock.tick(100);
             });
+
+            it('should call transform function with only one argument', function(done) {
+                const spy = sinon.spy();
+
+                this.streamA
+                    .map(() => 'ok')
+                    .map(spy)
+                    .take(3)
+                    .subscribe(
+                        _ => _,
+                        () => {
+                            assert(spy.alwaysCalledWithExactly('ok'));
+                            done();
+                        }
+                    );
+
+                this.clock.tick(100);
+            });
         });
 
         describe('.scan', () => {

@@ -153,9 +153,11 @@ function eventstream(subscriptor, scheduler) {
 
         return eventstream(
             joinSubscriptors(
-                constant(
-                    partial(invokeEach, substreams)
-                ),
+                constant(function() {
+                    while (substreams.length) {
+                        substreams.shift()();
+                    }
+                }),
                 subscriptor
             ),
             composeScheduler(function(next, nextError, value) {
@@ -283,14 +285,14 @@ function joinSubscriptors(a, b) {
 
 function partial(fn, argument) {
     return function(a, b, c) {
-        return fn(argument, a, b, c);
-    };
-}
+        var arity = arguments.length;
 
-function invokeEach(array) {
-    for (var i = 0, len = array.length; i < len; i += 1) {
-        array[i]();
-    }
+        return (
+            (arity > 2) ? fn(argument, a, b, c) :
+            (arity > 1) ? fn(argument, a, b) :
+            (arity > 0) ? fn(argument, a) : fn(argument)
+        );
+    };
 }
 
 function identity(x) {
