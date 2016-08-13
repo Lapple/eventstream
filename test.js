@@ -1,5 +1,6 @@
 const assert = require('assert');
 const sinon = require('sinon');
+const after = require('after');
 
 const eventstream = require('./eventstream');
 
@@ -515,7 +516,6 @@ describe('eventstream', () => {
         });
     });
 
-    // TODO: More tests in this section.
     describe('error propagation', () => {
         it('should collect errors thrown in onError handler', function(done) {
             const spy = sinon.spy();
@@ -628,6 +628,24 @@ describe('eventstream', () => {
                 );
 
             this.clock.tick(200);
+        });
+    });
+
+    xdescribe('multiple subscriptions', () => {
+        it('should invoke transformation functions once for every subscription', function(done) {
+            const spy = sinon.spy(() => 'ok');
+
+            const next = after(2, () => {
+                assert(spy.callCount === 4);
+                done();
+            });
+
+            const stream = this.streamA.map(spy);
+
+            stream.take(2).subscribe(_ => _, next);
+            stream.take(2).subscribe(_ => _, next);
+
+            this.clock.tick(100);
         });
     });
 });
