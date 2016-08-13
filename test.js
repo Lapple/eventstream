@@ -112,6 +112,24 @@ describe('eventstream', () => {
 
                 this.clock.tick(100);
             });
+
+            it('should call accumulator function with only two arguments', function(done) {
+                const spy = sinon.spy();
+
+                this.streamA
+                    .map(() => 'ok')
+                    .scan(undefined, spy)
+                    .take(3)
+                    .subscribe(
+                        _ => _,
+                        () => {
+                            assert(spy.alwaysCalledWithExactly(undefined, 'ok'));
+                            done();
+                        }
+                    );
+
+                this.clock.tick(100);
+            });
         });
 
         describe('.diff', () => {
@@ -135,6 +153,24 @@ describe('eventstream', () => {
 
                 this.clock.tick(100);
             });
+
+            it('should call diff function with only two arguments', function(done) {
+                const spy = sinon.spy();
+
+                this.streamA
+                    .map(() => 'ok')
+                    .diff('ok', spy)
+                    .take(3)
+                    .subscribe(
+                        _ => _,
+                        () => {
+                            assert(spy.alwaysCalledWithExactly('ok', 'ok'));
+                            done();
+                        }
+                    );
+
+                this.clock.tick(100);
+            });
         });
 
         describe('.filter', () => {
@@ -151,6 +187,24 @@ describe('eventstream', () => {
                             assert(spy.callCount === 2);
                             assert(spy.getCall(0).calledWith(2));
                             assert(spy.getCall(1).calledWith(4));
+                            done();
+                        }
+                    );
+
+                this.clock.tick(100);
+            });
+
+            it('should call predicate function with only one argument', function(done) {
+                const spy = sinon.spy(() => true);
+
+                this.streamA
+                    .map(() => 'ok')
+                    .filter(spy)
+                    .take(3)
+                    .subscribe(
+                        _ => _,
+                        () => {
+                            assert(spy.alwaysCalledWithExactly('ok'));
                             done();
                         }
                     );
@@ -259,12 +313,13 @@ describe('eventstream', () => {
         describe('.combineLatest', () => {
             it('should combine signals from two streams into one', function(done) {
                 const spy = sinon.spy();
+                const spyCombinator = sinon.spy((a, b) => `${a}-${b}`);
 
                 this.streamA
                     .scan('', letter => `${letter}A`)
                     .combineLatest(
                         this.streamB.scan('', letter => `${letter}B`),
-                        (a, b) => `${a}-${b}`
+                        spyCombinator
                     )
                     .take(4)
                     .subscribe(
@@ -275,6 +330,12 @@ describe('eventstream', () => {
                             assert(spy.getCall(1).calledWith('AA-B'));
                             assert(spy.getCall(2).calledWith('AAA-B'));
                             assert(spy.getCall(3).calledWith('AAA-BB'));
+                            // Make sure that combinator is called exactly with 2 arguments
+                            assert(spyCombinator.callCount === 4);
+                            assert(spyCombinator.getCall(0).calledWithExactly('A', 'B'));
+                            assert(spyCombinator.getCall(1).calledWithExactly('AA', 'B'));
+                            assert(spyCombinator.getCall(2).calledWithExactly('AAA', 'B'));
+                            assert(spyCombinator.getCall(3).calledWithExactly('AAA', 'BB'));
                             done();
                         }
                     );
