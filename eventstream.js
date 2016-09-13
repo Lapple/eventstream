@@ -18,21 +18,23 @@ function eventstream(subscriptor, scheduler) {
 
     function map(fn) {
         return transformScheduler(function(next, nextError, value) {
-            safeCall(next, nextError, partial(fn, value));
+            try {
+                next(fn(value));
+            } catch(e) {
+                nextError(e);
+            }
         });
     }
 
     function filter(predicate) {
         return transformScheduler(function(next, nextError, value) {
-            safeCall(
-                function(isAccepted) {
-                    if (isAccepted) {
-                        next(value);
-                    }
-                },
-                nextError,
-                partial(predicate, value)
-            );
+            try {
+                if (predicate(value)) {
+                    next(value);
+                }
+            } catch(e) {
+                nextError(e);
+            }
         });
     }
 
@@ -40,14 +42,12 @@ function eventstream(subscriptor, scheduler) {
         var s = seed;
 
         return transformScheduler(function(next, nextError, value) {
-            safeCall(
-                function(result) {
-                    s = result;
-                    next(result);
-                },
-                nextError,
-                partial(partial(fn, s), value)
-            );
+            try {
+                s = fn(s, value);
+                next(s);
+            } catch(e) {
+                nextError(e);
+            }
         });
     }
 
@@ -55,14 +55,12 @@ function eventstream(subscriptor, scheduler) {
         var s = start;
 
         return transformScheduler(function(next, nextError, value) {
-            safeCall(
-                function(result) {
-                    s = value;
-                    next(result);
-                },
-                nextError,
-                partial(partial(fn, s), value)
-            );
+            try {
+                next(fn(s, value));
+                s = value;
+            } catch(e) {
+                nextError(e);
+            }
         });
     }
 
@@ -109,11 +107,11 @@ function eventstream(subscriptor, scheduler) {
             values[property] = value;
 
             if ('a' in values && 'b' in values) {
-                safeCall(
-                    next,
-                    nextError,
-                    partial(partial(combinator, values.a), values.b)
-                );
+                try {
+                    next(combinator(values.a, values.b));
+                } catch(e) {
+                    nextError(e);
+                }
             }
         }
 
@@ -297,14 +295,6 @@ function partial(fn, argument) {
 
 function identity(x) {
     return x;
-}
-
-function safeCall(done, fail, fn) {
-    try {
-        done(fn());
-    } catch(e) {
-        fail(e);
-    }
 }
 
 module.exports = eventstream;
